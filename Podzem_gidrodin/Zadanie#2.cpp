@@ -304,7 +304,8 @@ namespace zd2 {
         {
             r_1 = Mh[i].x - Mh[i - 1].x;
             r_2 = Mh[i+1].x - Mh[i].x;
-            c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i + 1] * u[i]*r_2 / (Mh[i + 1].x - Mh[i].x)) + (c1[i] * u[i - 1] * r_1 / (Mh[i + 1].x - Mh[i].x)) + D * ((Mh[i + 1].x) * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x)));
+            c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i + 1] * u[i]*r_2 - c1[i] * u[i - 1] * r_1)/(Mh[i+1].x- Mh[i].x)) + (tau* D / m / Mh[i].x) * (Mh[i + 1].x * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
+            //c1[i] = c1[i] - (tau / m / Mh[i].x) * ((c1[i + 1] * u[i] * r_2 - c1[i] * u[i - 1] * r_1) / (Mh[i + 1].x - Mh[i].x)) + (tau * D / m ) * ((c1[i + 1] - c1[i]) /Mh[i].x - (c1[i+1] - 2*c1[i - 1]+c1[i-1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
             c1[c1.size() - 1] = c1[c1.size() - 2];
         }
         return c1;
@@ -404,7 +405,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
     std::cout << "---------------------------------------------------------------------------------------" << std::endl;
     static std::vector<point> Mh;
     std::ifstream mesh_(mesh);
-    for (int i : {100, 1000, 10000})// i отвечает за количество разбиений
+    for (int i : {10,100, 1000, 10000})// i отвечает за количество разбиений
     {
  
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
@@ -444,7 +445,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
         double norma=compute_norm(p, Mh,zd);
         std::vector<long double> v = velocyte(p, Mh, k,L,p_1-p_0);
         zd2::out_file(Mh, p, v, k,zd);
-        double tau = 0.001;
+        double tau = (Mh[1].x-Mh[0].x)/abs(v[0])-0.000000000000001;
         std::ofstream fout("C.dat");
         for (int i = 0; i < Mh.size(); i++)
         {
@@ -514,16 +515,16 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
             }
 
             case 1: {
-                double D = 1e-5;
+                double D = 1e-2;
                 fout << std::endl;
                 std::vector<double> c1(N - 1, 0);
                 auto iter_c = c1.cbegin();
                 c1.emplace(iter_c, 1);
-                for(int k=1; k<20;k++)
+                for(int k=1; k<1000;k++)
                 {
-                std::vector<double> c1_new = compute_c(c1,v, Mh, 0.00001, D);
+                std::vector<double> c1_new = compute_c(c1,v, Mh, tau, D);
                 c1 = c1_new;
-                    if (k % 5 == 0)
+                    if (k % 100 == 0)
                     {
                         double err = 0.0;
                         std::cout << "D__" << D << "__iter__" << k << "__taim__" << tau * k << std::endl;
@@ -531,8 +532,8 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
 
                         for (int i = 0; i < c1.size(); i++)
                         {
-                            std::cout << c1[i] << "  ";
-                            fout << c1[i] << "  ";
+                            std::cout << c1_new[i] << "  ";
+                            fout << c1_new[i] << "  ";
                         }
                         std::cout << std::endl;
                         fout << std::endl;
