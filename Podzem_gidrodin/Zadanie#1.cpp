@@ -7,6 +7,11 @@
 #include <limits>
 #include <numbers>
 
+constexpr auto PI = 3.14159265359;
+constexpr auto mu = 1e-3;
+constexpr auto m = 0.2;
+constexpr auto k_0 = 1e-12;
+
 static std::vector<long double> solveTridiagonalMatrix(const std::vector<double>& a, const std::vector<double>& b, const std::vector<double>& c, const std::vector<double>& d) {
     int n = d.size();
     std::vector<double> alpha(n), beta(n);
@@ -132,6 +137,7 @@ static std::vector<long double> compute_usl_1_roda(std::vector<point> Mh, std::v
     auto iter = p.cbegin();
     p.emplace(iter, 1);
     p.push_back(0);
+
     return p;
 }
 double compute_norm(std::vector<long double> p, std::vector<point> Mh,int z) {
@@ -176,6 +182,27 @@ double compute_taim(std::vector<long double> v, std::vector<point> Mh) {
         taim += (Mh[i + 1].x - Mh[i].x) / abs(v[i]);
     }
     return taim;
+}
+double compute_taim_exact(double p_0, double p_1, double L, int zd) {
+    double t_a;
+    switch (zd)
+    {
+    case(1): {
+        t_a = (mu * m * L * L) / (k_0 * abs(p_0 - p_1));
+        break;
+    }
+    case(2): {
+        t_a = (mu * m * L * L * 0.25) / (k_0 * abs(p_0 - exact_P_12_2(0.5,0)))+ (mu * m * L * L * 0.25) / (k_0*0.1 * abs(p_1 - exact_P_12_2(0.5,0)));
+        break;
+    }
+    case(3): {
+        t_a = (mu * m * L * L * 0.75*0.75) / (k_0 * abs(p_0 - exact_P_12_3(0.75,0))) + (mu * m * L * L * 0.25*0.25) / (k_0 * 0.0526316 * abs(p_1 - exact_P_12_3(0.75,0)));
+        break;
+    }
+    default:
+        break;
+    }
+    return t_a;
 }
 std::vector<double> compute_k(std::vector<point> Mh, int i)
 {
@@ -273,7 +300,7 @@ std::vector<long double> velocyte(std::vector<long double> p,std::vector<point> 
     v.resize(p.size()-1);
     for (int i = 0; i < v.size(); i++)
     {
-        v[i] = -(p[i + 1] - p[i]) / (Mh[i + 1].x - Mh[i].x);
+        v[i] = -k[i]*(p[i + 1] - p[i]) / (Mh[i + 1].x - Mh[i].x);
     }
     return v;
 }
@@ -307,9 +334,8 @@ void norm_plot(std::string mesh,int zd) {
 
 
 void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
-    norm_plot(mesh, 1);
     create_mesh(100);
-    int zd = 1;
+    int zd = 2;
     static std::vector<point> Mh;
     std::ifstream mesh_(mesh);
     if (mesh_.is_open())
@@ -322,7 +348,7 @@ void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
     }
     int N = Mh.size();
     double L = (Mh[N - 1].x - Mh[0].x);
-    Mh = Mh / (Mh[N - 1].x - Mh[0].x);
+    Mh = Mh / L;
     std::vector<double> k=compute_k(Mh,zd); // к-констант
     std::vector<long double> p = compute_usl_1_roda(Mh,k);
     mesh_.close();
@@ -338,11 +364,9 @@ void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
     }
     std::vector<long double> v = velocyte(p, Mh,k);
     double t_n=0.0;
-    double t_a=0.0;
-    double mu = 1e-3;
-    double m = 0.2;
-    t_a = (0.2 * pow(10,-3) * L * L) / (pow(10,-12)* (p_0 - p_1));
-    t_n = compute_taim(v, Mh)*k[0]*m*abs(p_0-p_1)/mu/L;
+    double t_e=0.0;
+    t_e = compute_taim_exact(p_0, p_1, L, zd);
+    t_n = compute_taim(v, Mh)*k_0*m*abs(p_0-p_1)/mu/L;
     out_file(Mh, p,v,2);
 
     
@@ -360,7 +384,7 @@ void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
     std::cout << "---------------------------------------------------------------------------------------" << std::endl;
     std::cout << "Norma:=   " << norma << std::endl;
     std::cout << "---------------------------------------------------------------------------------------" << std::endl;
-    std::cout << "Taim_a:=   " << t_a << " " << "Taim_n:=   " << t_n << std::endl;
+    std::cout << "Taim_e:=   " << t_e << " " << "Taim_n:=   " << t_n << std::endl;
     bool stop=0;
     while (!stop)
     {

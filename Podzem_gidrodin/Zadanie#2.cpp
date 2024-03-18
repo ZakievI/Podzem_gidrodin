@@ -124,14 +124,8 @@ namespace zd2 {
         }
     }
   
-    std::vector<long double> compout_debit(std::vector<long double> p, std::vector<point> Mh, std::vector<double> k) {
-        std::vector<long double> Q;
-        Q.resize(p.size() - 1);
-        for (int i = 0; i < p.size() - 1; i++)
-        {
-            Q[i] = k[i] * (p[i + 1] - p[i]) * 2 * PI * Mh[i].x / ((Mh[i + 1].x - Mh[i].x));
-        }
-        return Q;
+    double compout_debit(double v, double r) {
+        return v*r*2*PI;
     }
     template <typename T>
     void out_file(std::vector<point>& r, std::vector<T>& p, std::vector<T>& v, std::vector<double> k, int zd) {
@@ -143,7 +137,7 @@ namespace zd2 {
         {
             for (int i = 0; i < r.size() - 1; i++)
             {
-                fout << std::setprecision(10) << r[i].x << " " << p[i] << " " << v[i] << " " << exact_P_1(r[i].x, r[0].x) << " " << compout_debit(p, r, k)[i] << " " << exact_Q_1(r[i].x, r[0].x) << std::endl;
+//                fout << std::setprecision(10) << r[i].x << " " << p[i] << " " << v[i] << " " << exact_P_1(r[i].x, r[0].x) << " " << compout_debit() << " " << exact_Q_1(r[i].x, r[0].x) << std::endl;
             }
             fout << std::setprecision(10) << r[r.size() - 1].x << " " << p[r.size() - 1] << " . " << -(log(r[r.size() - 1].x) - log(r[0].x)) / (log(r[0].x)) << std::endl;
             break;
@@ -405,7 +399,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
     std::cout << "---------------------------------------------------------------------------------------" << std::endl;
     static std::vector<point> Mh;
     std::ifstream mesh_(mesh);
-    for (int i : {10,100, 1000, 10000})// i отвечает за количество разбиений
+    for (int i : {100, 1000, 10000})// i отвечает за количество разбиений
     {
  
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
@@ -473,6 +467,11 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 stop = 1;
                 break;
             }
+            case 6:
+            {
+                
+                break;
+            }
             case 0:
             {
                 stop = 1;
@@ -515,16 +514,16 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
             }
 
             case 1: {
-                double D = 1e-2;
+                double D = 1e-5;
                 fout << std::endl;
                 std::vector<double> c1(N - 1, 0);
                 auto iter_c = c1.cbegin();
                 c1.emplace(iter_c, 1);
-                for(int k=1; k<1000;k++)
+                for(int k=1; k<10;k++)
                 {
                 std::vector<double> c1_new = compute_c(c1,v, Mh, tau, D);
                 c1 = c1_new;
-                    if (k % 100 == 0)
+                    if (k % 1 == 0)
                     {
                         double err = 0.0;
                         std::cout << "D__" << D << "__iter__" << k << "__taim__" << tau * k << std::endl;
@@ -551,14 +550,9 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                     std::vector<double> c1(N - 1, 0);
                     auto iter_c = c1.cbegin();
                     c1.emplace(iter_c, 1);
-                    for (int k = 1; k < N_ + 1; k++)
-                    {
-                        for (int i = 1; i < c1.size() - 1; i++)
-                        {
-                            c1[i] = c1[i] + (tau)*D * ((c1[i + 1] - c1[i]) / (Mh[i + 1].x - Mh[i].x) - (c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x)) / (m * (Mh[i].x - Mh[i - 1].x)) - tau * (c1[i] * v[i] - c1[i - 1] * v[i - 1]) / (m * (Mh[i].x - Mh[i - 1].x));
-                        }
-                        c1[c1.size() - 1] = c1[c1.size() - 2];
-
+                    for (int k = 1; k < N_ + 1; k++) {
+                        std::vector<double> c1_new = compute_c(c1, v, Mh, tau, D);
+                        c1 = c1_new;
                     }
                     double err = 0.0;
                     std::cout << "---------------------------------------------------------------------------------------" << std::endl;
@@ -568,14 +562,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                     {
                         std::cout << c1[i] << "  ";
                         fout << c1[i] << "  ";
-                        //err += c1[i] - m * exp(-pow(Mh[i].x - v[i] * tau * k, 2) / 4 / D / tau / k)/2/sqrt(3.1415*D*tau*k);
                     }
-                    std::cout << std::endl;
-
-
-                    //std::cout << c1[c1.size()-1] << "  ";
-                    //std::cout << std::endl;
-                    //std::cout << "err: "<<err;
                     std::cout << std::endl;
                     fout << std::endl;
                 }
