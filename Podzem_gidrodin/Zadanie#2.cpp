@@ -93,7 +93,7 @@ namespace zd2 {
     }
     // точное значение скорости для задачи 2.1, 2.2(1-ая сетка)
     double velocity_u_0(double r_0) {
-        return -1 / (r_0*log(r_0));
+        return 1 / (r_0*log(r_0));
     }
     // точное значение давления для задачи 2.1 (когда граничные условия 1-ого и 2-ого рода)
     double exact_P_2(double r, double r_0) {
@@ -123,10 +123,8 @@ namespace zd2 {
             return (-log(r) + 0.0440824 * log(r_0) + log(0.75)- 0.0440824*log(0.75)) / (0.0440824 * log(r_0) + (1- 0.0440824)*log(0.75));
         }
     }
-  
-    double compout_debit(double v, double r) {
-        return v*r*2*PI;
-    }
+    // vr отвечает за вариант поля проницаемости 
+    
     template <typename T>
     void out_file(std::vector<point>& r, std::vector<T>& p, std::vector<T>& v, std::vector<double> k, int zd) {
         std::ofstream fout("P.dat");
@@ -137,7 +135,7 @@ namespace zd2 {
         {
             for (int i = 0; i < r.size() - 1; i++)
             {
-//                fout << std::setprecision(10) << r[i].x << " " << p[i] << " " << v[i] << " " << exact_P_1(r[i].x, r[0].x) << " " << compout_debit() << " " << exact_Q_1(r[i].x, r[0].x) << std::endl;
+                fout << std::setprecision(10) << r[i].x << " " << p[i] << " " << v[i] << " " << exact_P_1(r[i].x, r[0].x) /*<< " " << compout_debit()*/ << " " << exact_Q_1(r[i].x, r[0].x) << std::endl;
             }
             fout << std::setprecision(10) << r[r.size() - 1].x << " " << p[r.size() - 1] << " . " << -(log(r[r.size() - 1].x) - log(r[0].x)) / (log(r[0].x)) << std::endl;
             break;
@@ -271,7 +269,8 @@ namespace zd2 {
         std::vector<double> b{- (Mh[1].x * k[1] * Q[1]) / (Mh[2].x - Mh[1].x)};
         std::vector<double> c{ (Mh[1].x * k[1] * Q[1]) / (Mh[2].x - Mh[1].x) };
         std::vector<double> d(N - 3);
-        d[0] = Mh[0].x * k[0] * Q[0] * velocity_u_0(Mh[0].x);
+
+        d[0] = -Mh[0].x * velocity_u_0(Mh[0].x)*2* Mh[0].x*k[0]*Q[0]/(Mh[1].x+ Mh[0].x);
 
         for (int i = 2; i < N - 2; i++)
         {
@@ -286,7 +285,7 @@ namespace zd2 {
         d.push_back(-Mh[N - 2].x * k[N - 2] * Q[N - 2] / (Mh[N - 1].x - Mh[N - 2].x));
         std::vector<long double> p = solveTridiagonalMatrix(a, b, c, d);
         auto iter = p.cbegin();
-        p.emplace(iter, p[0]-(Mh[1].x-Mh[0].x)*(velocity_u_0(Mh[0].x)) );
+        p.emplace(iter, p[0]-Mh[0].x*(velocity_u_0(Mh[0].x))* 2*(Mh[1].x- Mh[0].x)/ (Mh[1].x + Mh[0].x));
         p.push_back(1);
         return p;
     }
@@ -391,6 +390,73 @@ namespace zd2 {
         }
 
     }
+    double compout_debit(std::vector<point> Mh, double r, double k, int vr) {
+        int I = 0;
+        
+        std::vector<long double> p;
+        switch (vr)
+        {
+        case(1): {
+            while (Mh[I].x < r) I++;
+            std::vector<double> k1(Mh.size() - 1, 1.0);
+            p = compute_usl_1_roda(Mh, k1);
+            return -2 * PI * r * k1[I - 1] * (p[I] - p[I - 1]) / (Mh[I].x - Mh[I - 1].x);
+            break;
+            break;
+        }
+        case(2): {
+            std::vector<double> k1;
+            while (Mh[I].x < r) I++;
+            for (int i = 1; i < Mh.size(); i++)
+            {
+                if (Mh[i].x <= 0.5)
+                {
+                    k1.push_back(1.0);
+                }
+                else {
+                    k1.push_back(k);
+                }
+            }
+            p = compute_usl_1_roda(Mh, k1);
+            return -2 * PI * r * k1[I-1] * (p[I] - p[I-1]) / (Mh[I].x - Mh[I-1].x);
+            break;
+        }
+        case(3): {
+            std::vector<double> k1;
+            while (Mh[I].x < r) I++;
+            for (int i = 1; i < Mh.size(); i++)
+            {
+                if (Mh[i].x <= 0.75)
+                {
+                    k1.push_back(1.0);
+                }
+                else {
+                    k1.push_back(k);
+                }
+            }
+            p = compute_usl_1_roda(Mh, k1);
+            return -2 * PI * r * k1[I - 1] * (p[I] - p[I - 1]) / (Mh[I].x - Mh[I - 1].x);
+            break;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    void out_file_2_2_5(std::vector<point> Mh,int vr){
+        std::ofstream fout("2.2.5.dat");
+        fout << "r k0.1 k0.2 k0.3 k0.4 k0.5 k0.6 k0.7 k0.8 k0.9 k1.0" << std::endl;
+        for (double r:{0.01,0.02,0.05,0.1,0.2,0.5,0.75})
+        {
+            fout << r << " ";
+            for (double k : {0.1, 0.2, 0.3,0.4, 0.5, 0.6,0.7,0.8,0.9,1.0})
+            {
+                fout << compout_debit(Mh, r, k, vr)<<" ";
+            }
+            fout << std::endl;
+        }
+        fout.close();
+    }
 }
 using namespace zd2;
 void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
@@ -401,7 +467,6 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
     std::ifstream mesh_(mesh);
     for (int i : {100, 1000, 10000})// i отвечает за количество разбиений
     {
- 
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
         int zd=1;//1-для задачи 2.1, 2.2(1 стека),  2-для задачи 2.2 (2 сетка), 3-для задачи 2.2(3 сетка), 4-для задачи 2.1(пункт с граничным условием 2ого рода
         int punkt=1;//1-граничные условия 1ого рода, 2-граничное условие 1-ого и 2-ого рода
@@ -457,7 +522,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
         {
             std::cout << "---------------------------------------------------------------------------------------" << std::endl;
             std::cout << "#0 (выйти) #1 (график для разных итераций) #2 (график для различных коэффициентов дифузии)"<<std::endl<<
-                "#3(время) #4(значение давления на забойне) #5(следующая сетка)" << std::endl;
+                "#3(время) #4(значение давления на забойне) #5(следующая сетка) #6(задание 2.2.5)" << std::endl;
             std::cout << "---------------------------------------------------------------------------------------" << std::endl;
             std::cin >> l;
             switch (l)
@@ -469,7 +534,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
             }
             case 6:
             {
-                
+                out_file_2_2_5(Mh,2);
                 break;
             }
             case 0:
@@ -503,16 +568,13 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                     break;
                 }
                 }
-                break;
-
-                
+                break;  
             }
             case 4:
             {
                 std::cout << "p(rw)=" << p[0] << std::endl;
                 break;
             }
-
             case 1: {
                 double D = 1e-5;
                 fout << std::endl;
@@ -572,18 +634,10 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
             {std::cout << "error" << std::endl;
             break;
             }
-            }
-            
+            }  
         }
-        
         Mh.clear();
         fout.close();
         if (bre_ak) break;
     }
-    
-   
-    
-
-
 }
-
