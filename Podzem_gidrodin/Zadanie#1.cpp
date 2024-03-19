@@ -192,11 +192,11 @@ double compute_taim_exact(double p_0, double p_1, double L, int zd) {
         break;
     }
     case(2): {
-        t_a = (mu * m * L * L * 0.25) / (k_0 * abs(p_0 - exact_P_12_2(0.5,0)))+ (mu * m * L * L * 0.25) / (k_0*0.1 * abs(p_1 - exact_P_12_2(0.5,0)));
+        t_a = (mu * m * L * L * 0.25) / (k_0 * abs(p_0 - p_0*exact_P_12_2(0.5,0)))+ (mu * m * L * L * 0.25) / (k_0*0.1 * abs(p_1 - p_0*exact_P_12_2(0.5,0)));
         break;
     }
     case(3): {
-        t_a = (mu * m * L * L * 0.75*0.75) / (k_0 * abs(p_0 - exact_P_12_3(0.75,0))) + (mu * m * L * L * 0.25*0.25) / (k_0 * 0.0526316 * abs(p_1 - exact_P_12_3(0.75,0)));
+        t_a = (mu * m * L * L * 0.75*0.75) / (k_0 * abs(p_0 - p_0 * exact_P_12_3(0.75,0))) + (mu * m * L * L * 0.25*0.25) / (k_0 * 0.0526316 * abs(p_1 - p_0 * exact_P_12_3(0.75,0)));
         break;
     }
     default:
@@ -335,7 +335,7 @@ void norm_plot(std::string mesh,int zd) {
 
 void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
     create_mesh(100);
-    int zd = 2;
+    int zd =3;
     static std::vector<point> Mh;
     std::ifstream mesh_(mesh);
     if (mesh_.is_open())
@@ -366,7 +366,7 @@ void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
     double t_n=0.0;
     double t_e=0.0;
     t_e = compute_taim_exact(p_0, p_1, L, zd);
-    t_n = compute_taim(v, Mh)*k_0*m*abs(p_0-p_1)/mu/L;
+    t_n = compute_taim(v, Mh)*m*abs(p_0-p_1)/mu/L;
     out_file(Mh, p,v,2);
 
     
