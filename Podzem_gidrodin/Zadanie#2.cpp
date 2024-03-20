@@ -186,7 +186,7 @@ namespace zd2 {
         };
         fout.close();
     }
-    std::vector<long double> velocyte(std::vector<long double> p, std::vector<point> Mh, std::vector<double> k, double L, double dlt_p) {
+    std::vector<long double> velocyte(std::vector<long double> p, std::vector<point> Mh, std::vector<double> k, double L) {
         std::vector<long double> v;
         v.resize(p.size() - 1);
         for (int i = 0; i < v.size(); i++)
@@ -216,7 +216,7 @@ namespace zd2 {
 
         return x;
     }
-    static std::vector<long double> compute_usl_1_roda(std::vector<point> Mh, std::vector<double> k) {
+    static std::vector<long double> compute_usl_1_roda(double p_0, double p_1, std::vector<point> Mh, std::vector<double> k) {
         int N = Mh.size();
         std::vector<double> Q;
         if (poprav_kof) {
@@ -233,6 +233,7 @@ namespace zd2 {
         std::vector<double> b{ -(Mh[0].x * k[0]* Q[0]) / (Mh[1].x - Mh[0].x) - (Mh[1].x * k[1] * Q[1]) / (Mh[2].x - Mh[1].x) };
         std::vector<double> c{ (Mh[1].x * k[1] * Q[1]) / (Mh[2].x - Mh[1].x) };
         std::vector<double> d(N - 3);
+        d[0] = -p_0*(Mh[0].x * k[0] * Q[0]) / ((Mh[1].x - Mh[0].x));
 
         for (int i = 2; i < N - 2; i++)
         {
@@ -244,12 +245,12 @@ namespace zd2 {
         a.push_back((Mh[N - 3].x * k[N - 3] * Q[N - 3]) / (Mh[N - 2].x - Mh[N - 3].x));
         b.push_back(-(Mh[N - 3].x * k[N - 3] * Q[N - 3]) / (Mh[N - 2].x - Mh[N - 3].x) - (Mh[N - 2].x * k[N - 2] * Q[N - 2]) / (Mh[N - 1].x - Mh[N - 2].x));
         c.push_back(0);
-        d.push_back(-Mh[N - 2].x * k[N - 2] * Q[N - 2] / (Mh[N - 1].x - Mh[N - 2].x));
+        d.push_back(-p_1*Mh[N - 2].x * k[N - 2] * Q[N - 2] / (Mh[N - 1].x - Mh[N - 2].x));
 
         std::vector<long double> p = solveTridiagonalMatrix(a, b, c, d);
         auto iter = p.cbegin();
-        p.emplace(iter, 0);
-        p.push_back(1);
+        p.emplace(iter, p_0);
+        p.push_back(p_1);
         return p;
     }
     static std::vector<long double> compute_usl_1_2_roda(std::vector<point> Mh, std::vector<double> k) {
@@ -297,8 +298,8 @@ namespace zd2 {
         {
             r_1 = Mh[i].x - Mh[i - 1].x;
             r_2 = Mh[i+1].x - Mh[i].x;
-            c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i + 1] * u[i]*r_2 - c1[i] * u[i - 1] * r_1)/(Mh[i+1].x- Mh[i].x)) + (tau* D / m / Mh[i].x) * (Mh[i + 1].x * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
-            //c1[i] = c1[i] - (tau / m / Mh[i].x) * ((c1[i + 1] * u[i] * r_2 - c1[i] * u[i - 1] * r_1) / (Mh[i + 1].x - Mh[i].x)) + (tau * D / m ) * ((c1[i + 1] - c1[i]) /Mh[i].x - (c1[i+1] - 2*c1[i - 1]+c1[i-1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
+            //c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i + 1] * u[i]*r_2 - c1[i] * u[i - 1] * r_1)/(Mh[i+1].x- Mh[i].x)) + (tau* D / m / Mh[i].x) * (Mh[i + 1].x * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
+            c1[i] = c1[i] - (tau / m / Mh[i].x) * ((c1[i + 1] * u[i] * r_2 - c1[i] * u[i - 1] * r_1) / (Mh[i + 1].x - Mh[i].x)) + (tau * D / m ) * ((c1[i + 1] - c1[i]) /Mh[i].x - (c1[i+1] - 2*c1[i - 1]+c1[i-1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
             c1[c1.size() - 1] = c1[c1.size() - 2];
         }
         return c1;
@@ -399,7 +400,7 @@ namespace zd2 {
         case(1): {
             while (Mh[I].x < r) I++;
             std::vector<double> k1(Mh.size() - 1, 1.0);
-            p = compute_usl_1_roda(Mh, k1);
+            p = compute_usl_1_roda(0,1, Mh, k1);
             return -2 * PI * r * k1[I - 1] * (p[I] - p[I - 1]) / (Mh[I].x - Mh[I - 1].x);
             break;
             break;
@@ -417,7 +418,7 @@ namespace zd2 {
                     k1.push_back(k);
                 }
             }
-            p = compute_usl_1_roda(Mh, k1);
+            p = compute_usl_1_roda(0,1,Mh, k1);
             return -2 * PI * r * k1[I-1] * (p[I] - p[I-1]) / (Mh[I].x - Mh[I-1].x);
             break;
         }
@@ -434,7 +435,7 @@ namespace zd2 {
                     k1.push_back(k);
                 }
             }
-            p = compute_usl_1_roda(Mh, k1);
+            p = compute_usl_1_roda(0,1,Mh, k1);
             return -2 * PI * r * k1[I - 1] * (p[I] - p[I - 1]) / (Mh[I].x - Mh[I - 1].x);
             break;
             break;
@@ -491,7 +492,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
         {
         case(1):
         {
-            p = compute_usl_1_roda(Mh, k);
+            p = compute_usl_1_roda(0,1,Mh, k);
             break;
         }
         case(2):
@@ -502,9 +503,9 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
         }
         
         double norma=compute_norm(p, Mh,zd);
-        std::vector<long double> v = velocyte(p, Mh, k,L,p_1-p_0);
-        zd2::out_file(Mh, p, v, k,zd);
-        double tau = (Mh[1].x-Mh[0].x)/abs(v[0])-0.000000000000001;
+        std::vector<long double> v = velocyte(p, Mh, k,L);
+        out_file(Mh, p, v, k,zd);
+        double tau = (Mh[1].x-Mh[0].x)/abs(v[0]);
         std::ofstream fout("C.dat");
         for (int i = 0; i < Mh.size(); i++)
         {
@@ -544,6 +545,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 break;
             }
 
+
             case 3:
             {
                 double t_n = 0.0;
@@ -581,14 +583,14 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 std::vector<double> c1(N - 1, 0);
                 auto iter_c = c1.cbegin();
                 c1.emplace(iter_c, 1);
-                for(int k=1; k<10;k++)
+                for(int k1=1; k1<20;k1++)
                 {
-                std::vector<double> c1_new = compute_c(c1,v, Mh, tau, D);
+                std::vector<double> c1_new = compute_c(c1, velocyte(compute_usl_1_roda(1, 0, Mh, k), Mh, k, L), Mh, tau, D);
                 c1 = c1_new;
-                    if (k % 1 == 0)
+                    if (k1 % 1 == 0)
                     {
                         double err = 0.0;
-                        std::cout << "D__" << D << "__iter__" << k << "__taim__" << tau * k << std::endl;
+                        std::cout << "D__" << D << "__iter__" << k1 << "__taim__" << tau * k1 << std::endl;
                         std::cout << "---------------------------------------------------------------------------------------" << std::endl;
 
                         for (int i = 0; i < c1.size(); i++)
