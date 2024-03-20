@@ -11,7 +11,7 @@ constexpr auto PI =3.14159265359;
 constexpr auto mu=1e-3;
 constexpr auto m = 0.2;
 constexpr auto k_0 = 1e-12;
-bool poprav_kof=0; //включать или отключать поправочный коэфициент 
+bool poprav_kof=1; //включать или отключать поправочный коэфициент 
 
 struct point {
     point(double x, double y): x{x},y{y}{}
@@ -180,8 +180,8 @@ namespace zd2 {
         double m;
         for (double i = 0; i < N; i++)
         {
-           // fout << h_0 + (h_1 - h_0) * i / N << std::endl;//-регулярная сетка
-            fout << h_0 * pow(h_1 / h_0, i / (N - 1)) << " ";//-логарифмическая сетка
+            fout << h_0 + (h_1 - h_0) * i / N << std::endl;//-регулярная сетка
+            //fout << h_0 * pow(h_1 / h_0, i / (N - 1)) << " ";//-логарифмическая сетка
 
         };
         fout.close();
@@ -296,10 +296,10 @@ namespace zd2 {
         double r_2;
         for (int i = 1; i < c1.size() - 1; i++)
         {
-            r_1 = Mh[i].x - Mh[i - 1].x;
-            r_2 = Mh[i+1].x - Mh[i].x;
-            //c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i + 1] * u[i]*r_2 - c1[i] * u[i - 1] * r_1)/(Mh[i+1].x- Mh[i].x)) + (tau* D / m / Mh[i].x) * (Mh[i + 1].x * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
-            c1[i] = c1[i] - (tau / m / Mh[i].x) * ((c1[i + 1] * u[i] * r_2 - c1[i] * u[i - 1] * r_1) / (Mh[i + 1].x - Mh[i].x)) + (tau * D / m ) * ((c1[i + 1] - c1[i]) /Mh[i].x - (c1[i+1] - 2*c1[i - 1]+c1[i-1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
+            r_1 = (Mh[i].x + Mh[i - 1].x)/2;
+            r_2 = (Mh[i+1].x + Mh[i].x)/2;
+            c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i] * u[i]*r_2 - c1[i-1] * u[i - 1] * r_1)/(Mh[i].x- Mh[i-1].x)) + (tau* D / m / Mh[i].x) * (Mh[i + 1].x * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
+            //c1[i] = c1[i] - (tau / m / Mh[i].x) * ((c1[i + 1] * u[i] * r_2 - c1[i] * u[i - 1] * r_1) / (Mh[i + 1].x - Mh[i].x)) + (tau * D / m ) * ((c1[i + 1] - c1[i]) /Mh[i].x - (c1[i+1] - 2*c1[i - 1]+c1[i-1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
             c1[c1.size() - 1] = c1[c1.size() - 2];
         }
         return c1;
@@ -391,68 +391,40 @@ namespace zd2 {
         }
 
     }
-    double compout_debit(std::vector<point> Mh, double r, double k, int vr) {
-        int I = 0;
-        
-        std::vector<long double> p;
-        switch (vr)
-        {
-        case(1): {
-            while (Mh[I].x < r) I++;
-            std::vector<double> k1(Mh.size() - 1, 1.0);
-            p = compute_usl_1_roda(0,1, Mh, k1);
-            return -2 * PI * r * k1[I - 1] * (p[I] - p[I - 1]) / (Mh[I].x - Mh[I - 1].x);
-            break;
-            break;
-        }
-        case(2): {
-            std::vector<double> k1;
-            while (Mh[I].x < r) I++;
-            for (int i = 1; i < Mh.size(); i++)
-            {
-                if (Mh[i].x <= 0.5)
-                {
-                    k1.push_back(1.0);
-                }
-                else {
-                    k1.push_back(k);
-                }
-            }
-            p = compute_usl_1_roda(0,1,Mh, k1);
-            return -2 * PI * r * k1[I-1] * (p[I] - p[I-1]) / (Mh[I].x - Mh[I-1].x);
-            break;
-        }
-        case(3): {
-            std::vector<double> k1;
-            while (Mh[I].x < r) I++;
-            for (int i = 1; i < Mh.size(); i++)
-            {
-                if (Mh[i].x <= 0.75)
-                {
-                    k1.push_back(1.0);
-                }
-                else {
-                    k1.push_back(k);
-                }
-            }
-            p = compute_usl_1_roda(0,1,Mh, k1);
-            return -2 * PI * r * k1[I - 1] * (p[I] - p[I - 1]) / (Mh[I].x - Mh[I - 1].x);
-            break;
-            break;
-        }
-        default:
-            break;
-        }
-    }
+    std::vector<double> compout_debit(std::vector<point> Mh, double r, double k, int vr) {
+     std::vector<long double> p;
+     std::vector<double> k1;
+     for (int i = 1; i < Mh.size(); i++)
+     {
+         if (Mh[i].x <= r)
+         {
+             k1.push_back(1.0);
+         }
+         else {
+             k1.push_back(k);
+         }
+     }
+     p = compute_usl_1_roda(0,1,Mh, k1);
+     std::vector<double> Q;
+     for (int i = 1; i < Mh.size(); i++)
+     {
+         Q.push_back(-2 * PI * Mh[i].x * ( k1[i - 1] * (p[i] - p[i - 1]) / (Mh[i].x - Mh[i - 1].x)));
+     }
+     return Q;
+         }
     void out_file_2_2_5(std::vector<point> Mh,int vr){
         std::ofstream fout("2.2.5.dat");
-        fout << "r k0.1 k0.2 k0.3 k0.4 k0.5 k0.6 k0.7 k0.8 k0.9 k1.0" << std::endl;
+        fout << "r" << std::endl;
         for (double r:{0.01,0.02,0.05,0.1,0.2,0.5,0.75})
         {
-            fout << r << " ";
             for (double k : {0.1, 0.2, 0.3,0.4, 0.5, 0.6,0.7,0.8,0.9,1.0})
             {
-                fout << compout_debit(Mh, r, k, vr)<<" ";
+                fout << r << " "<< k << " _ ";
+                for (size_t i = 0; i < Mh.size()-1; i++)
+                {
+                    fout << compout_debit(Mh, r, k, vr)[i] << " ";
+                }
+                fout << std::endl;
             }
             fout << std::endl;
         }
@@ -469,7 +441,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
     for (int i : {100, 1000, 10000})// i отвечает за количество разбиений
     {
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
-        int zd=1;//1-для задачи 2.1, 2.2(1 стека),  2-для задачи 2.2 (2 сетка), 3-для задачи 2.2(3 сетка), 4-для задачи 2.1(пункт с граничным условием 2ого рода
+        int zd=2;//1-для задачи 2.1, 2.2(1 сетка),  2-для задачи 2.2 (2 сетка), 3-для задачи 2.2(3 сетка), 4-для задачи 2.1(пункт с граничным условием 2ого рода
         int punkt=1;//1-граничные условия 1ого рода, 2-граничное условие 1-ого и 2-ого рода
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
         std::ifstream mesh_(mesh);
@@ -544,8 +516,6 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 bre_ak = 1;
                 break;
             }
-
-
             case 3:
             {
                 double t_n = 0.0;
@@ -564,7 +534,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                     break;
                 }
                 case(3): {
-                    t_a = (m * mu * log(0.75 / Mh[0].x) * L * L * (0.75 - Mh[0].x) * (0.75 + Mh[0].x)) / (2 * k[0] * k_0 * abs(p_0 - p_1 * exact_P_22_2(0.75, Mh[0].x))) + (m * mu * log(Mh[N - 1].x / 0.75) * L * L * (Mh[N - 1].x - 0.75) * (Mh[N - 1].x + 0.75)) / (2 * k[N - 2] * k_0 * abs(p_1 * exact_P_22_2(0.75, Mh[0].x) - p_1));
+                    t_a = (m * mu * log(0.75 / Mh[0].x) * L * L * (0.75 - Mh[0].x) * (0.75 + Mh[0].x)) / (2 * k[0] * k_0 * abs(p_0 - p_1 * exact_P_22_3(0.75, Mh[0].x))) + (m * mu * log(Mh[N - 1].x / 0.75) * L * L * (Mh[N - 1].x - 0.75) * (Mh[N - 1].x + 0.75)) / (2 * k[N - 2] * k_0 * abs(p_1 * exact_P_22_3(0.75, Mh[0].x) - p_1));
                     t_n = compute_taim(v, Mh, k) * m * abs(p_0 - p_1) / mu / L;
                     std::cout << "Taim_a:=   " << t_a << " " << "Taim_n:=   " << t_n << std::endl;
                     break;
@@ -578,16 +548,16 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 break;
             }
             case 1: {
-                double D = 1e-5;
+                double D = 0.0;
                 fout << std::endl;
                 std::vector<double> c1(N - 1, 0);
                 auto iter_c = c1.cbegin();
                 c1.emplace(iter_c, 1);
-                for(int k1=1; k1<20;k1++)
+                for(int k1=1; k1<10;k1++)
                 {
                 std::vector<double> c1_new = compute_c(c1, velocyte(compute_usl_1_roda(1, 0, Mh, k), Mh, k, L), Mh, tau, D);
                 c1 = c1_new;
-                    if (k1 % 1 == 0)
+                    if (k1 % 2 == 0)
                     {
                         double err = 0.0;
                         std::cout << "D__" << D << "__iter__" << k1 << "__taim__" << tau * k1 << std::endl;
