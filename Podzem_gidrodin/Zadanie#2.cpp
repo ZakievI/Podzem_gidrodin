@@ -414,17 +414,14 @@ namespace zd2 {
          }
     void out_file_2_2_5(std::vector<point> Mh,int vr){
         std::ofstream fout("2.2.5.dat");
-        fout << "r" << std::endl;
+        fout << "r 0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0" << std::endl;
         for (double r:{0.01,0.02,0.05,0.1,0.2,0.5,0.75})
         {
-            for (double k : {0.1, 0.2, 0.3,0.4, 0.5, 0.6,0.7,0.8,0.9,1.0})
+            fout << r << " ";
+            for (double k : {0.001, 0.01, 0.1, 0.2, 0.3,0.4, 0.5, 0.6,0.7,0.8,0.9,1.0})
             {
-                fout << r << " "<< k << " _ ";
-                for (size_t i = 0; i < Mh.size()-1; i++)
-                {
-                    fout << compout_debit(Mh, r, k, vr)[i] << " ";
-                }
-                fout << std::endl;
+                fout << compout_debit(Mh, r, k, vr)[0] << " ";
+
             }
             fout << std::endl;
         }
