@@ -290,19 +290,35 @@ namespace zd2 {
         p.push_back(1);
         return p;
     }
-    static std::vector<double> compute_c(std::vector<double> c1,std::vector<long double> u, std::vector<point> Mh,double tau, double D)
+    static std::vector<long double> compute_c(std::vector<long double> c,std::vector<long double> u, std::vector<point> Mh,double tau, double D)
     {
-        double r_1;
-        double r_2;
-        for (int i = 1; i < c1.size() - 1; i++)
+        double r_1=0.0;
+        double r_2=0.0;
+        double h = Mh[1].x + Mh[0].x;
+    
+        std::vector<double> a;
+        std::vector<double> b;
+        std::vector<double> d;
+        std::vector<double> e;
+        r_2 = (Mh[1].x + Mh[0].x) / 2;
+        a.push_back(0);
+        b.push_back(m / tau + u[0] * r_2 / Mh[0].x / h - D / Mh[0].x / h + 2 * D / Mh[0].x / h / h);
+        d.push_back(-D / Mh[0].x / h / h);
+        e.push_back(m * c[0] / tau);
+        for (int i = 1; i < c.size()-1; i++)
         {
-            r_1 = (Mh[i].x + Mh[i - 1].x)/2;
-            r_2 = (Mh[i+1].x + Mh[i].x)/2;
-            c1[i] = c1[i] - (tau / m/ Mh[i].x)  * ((c1[i] * u[i]*r_2 - c1[i-1] * u[i - 1] * r_1)/(Mh[i].x- Mh[i-1].x)) + (tau* D / m / Mh[i].x) * (Mh[i + 1].x * (c1[i + 1] - c1[i]) / (pow(Mh[i + 1].x - Mh[i].x, 2)) - Mh[i].x*(c1[i] - c1[i - 1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
-            //c1[i] = c1[i] - (tau / m / Mh[i].x) * ((c1[i + 1] * u[i] * r_2 - c1[i] * u[i - 1] * r_1) / (Mh[i + 1].x - Mh[i].x)) + (tau * D / m ) * ((c1[i + 1] - c1[i]) /Mh[i].x - (c1[i+1] - 2*c1[i - 1]+c1[i-1]) / (Mh[i].x - Mh[i - 1].x) / (Mh[i + 1].x - Mh[i].x));
-            c1[c1.size() - 1] = c1[c1.size() - 2];
+            r_1 = (Mh[i].x + Mh[i - 1].x) / 2;
+            r_2 = (Mh[i + 1].x + Mh[i].x) / 2;
+            a.push_back(-r_1*u[i-1]/Mh[i].x/h+D/Mh[i].x/h-D/Mh[i].x/h/h);
+            b.push_back(m/tau+u[i]*r_2/Mh[i].x/h-D/Mh[i].x/h+2*D/Mh[i].x/h/h);
+            d.push_back(-D / Mh[i].x / h / h);
+            e.push_back(m * c[i] / tau);
         }
-        return c1;
+        static std::vector<long double> c_new(c.size()-1);
+        c_new = solveTridiagonalMatrix(a, b, d, e);
+        auto iter = c_new.cbegin();
+        c_new.emplace(iter, 1);
+        return c_new;
     }
     std::vector<double> compute_k(std::vector<point> Mh, int i)
     {
@@ -474,7 +490,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
         double norma=compute_norm(p, Mh,zd);
         std::vector<long double> v = velocyte(p, Mh, k,L);
         out_file(Mh, p, v, k,zd);
-        double tau = (Mh[1].x-Mh[0].x)/abs(v[0]);
+        double tau = 0.9*(Mh[1].x-Mh[0].x)/abs(v[0]);
         std::ofstream fout("C.dat");
         for (int i = 0; i < Mh.size(); i++)
         {
@@ -547,12 +563,12 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
             case 1: {
                 double D = 0.0;
                 fout << std::endl;
-                std::vector<double> c1(N - 1, 0);
+                std::vector<long double> c1(N - 1, 0);
                 auto iter_c = c1.cbegin();
                 c1.emplace(iter_c, 1);
                 for(int k1=1; k1<10;k1++)
                 {
-                std::vector<double> c1_new = compute_c(c1, velocyte(compute_usl_1_roda(1, 0, Mh, k), Mh, k, L), Mh, tau, D);
+                std::vector<long double> c1_new = compute_c(c1, velocyte(compute_usl_1_roda(1, 0, Mh, k), Mh, k, L), Mh, tau, D);
                 c1 = c1_new;
                     if (k1 % 2 == 0)
                     {
@@ -578,11 +594,11 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 std::cin >> N_;
                 for (double D : { 1e-1, 1e-2, 1e-5, 0.0, })
                 {
-                    std::vector<double> c1(N - 1, 0);
+                    std::vector<long double> c1(N - 1, 0);
                     auto iter_c = c1.cbegin();
                     c1.emplace(iter_c, 1);
                     for (int k = 1; k < N_ + 1; k++) {
-                        std::vector<double> c1_new = compute_c(c1, v, Mh, tau, D);
+                        std::vector<long double> c1_new = compute_c(c1, v, Mh, tau, D);
                         c1 = c1_new;
                     }
                     double err = 0.0;
