@@ -11,7 +11,7 @@ constexpr auto PI =3.14159265359;
 constexpr auto mu=1e-3;
 constexpr auto m = 0.2;
 constexpr auto k_0 = 1e-12;
-bool poprav_kof=1; //включать или отключать поправочный коэфициент 
+bool poprav_kof=0; //включать или отключать поправочный коэфициент 
 
 struct point {
     point(double x, double y): x{x},y{y}{}
@@ -180,8 +180,8 @@ namespace zd2 {
         double m;
         for (double i = 0; i < N; i++)
         {
-            fout << h_0 + (h_1 - h_0) * i / N << std::endl;//-регулярная сетка
-            //fout << h_0 * pow(h_1 / h_0, i / (N - 1)) << " ";//-логарифмическая сетка
+            //fout << h_0 + (h_1 - h_0) * i / N << std::endl;//-регулярная сетка
+            fout << h_0 * pow(h_1 / h_0, i / (N - 1)) << " ";//-логарифмическая сетка
 
         };
         fout.close();
@@ -290,34 +290,42 @@ namespace zd2 {
         p.push_back(1);
         return p;
     }
-    static std::vector<long double> compute_c(std::vector<long double> c,std::vector<long double> u, std::vector<point> Mh,double tau, double D)
+    static std::vector<long double> compute_c(std::vector<long double> c,std::vector<long double> u1, std::vector<point> Mh, double D)
     {
+        std::vector<long double> u;
+        for (size_t i = 0; i <c.size()-1 ; i++)
+        {
+            u.push_back(-1.0 / log(Mh[0].x) / Mh[i].x);
+        }
         double r_1=0.0;
         double r_2=0.0;
         double h = Mh[1].x + Mh[0].x;
+        double tau = 0.9 *h/u[0];
     
         std::vector<double> a;
         std::vector<double> b;
         std::vector<double> d;
         std::vector<double> e;
         r_2 = (Mh[1].x + Mh[0].x) / 2;
-        a.push_back(0);
-        b.push_back(m / tau + u[0] * r_2 / Mh[0].x / h - D / Mh[0].x / h + 2 * D / Mh[0].x / h / h);
-        d.push_back(-D / Mh[0].x / h / h);
-        e.push_back(m * c[0] / tau);
+        a.push_back(0.0);
+        b.push_back(1.0);
+        d.push_back(0.0);
+        e.push_back(c[0]);
         for (int i = 1; i < c.size()-1; i++)
         {
             r_1 = (Mh[i].x + Mh[i - 1].x) / 2;
             r_2 = (Mh[i + 1].x + Mh[i].x) / 2;
-            a.push_back(-r_1*u[i-1]/Mh[i].x/h+D/Mh[i].x/h-D/Mh[i].x/h/h);
-            b.push_back(m/tau+u[i]*r_2/Mh[i].x/h-D/Mh[i].x/h+2*D/Mh[i].x/h/h);
-            d.push_back(-D / Mh[i].x / h / h);
-            e.push_back(m * c[i] / tau);
+            a.push_back(-tau*r_1*u[i-1]/Mh[i].x/h+tau*D/Mh[i].x/h-tau*D/h/h);
+            b.push_back(1.0+tau*u[i]*r_2/Mh[i].x/h- tau * D/Mh[i].x/h+ tau * 2*D/h/h);
+            d.push_back(-tau*D / h / h);
+            e.push_back(c[i]);
         }
-        static std::vector<long double> c_new(c.size()-1);
+        a.push_back(0.0);
+        b.push_back(1.0);
+        d.push_back(0.0);
+        e.push_back(c[c.size() - 1]);
+        static std::vector<long double> c_new;
         c_new = solveTridiagonalMatrix(a, b, d, e);
-        auto iter = c_new.cbegin();
-        c_new.emplace(iter, 1);
         return c_new;
     }
     std::vector<double> compute_k(std::vector<point> Mh, int i)
@@ -454,7 +462,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
     for (int i : {100, 1000, 10000})// i отвечает за количество разбиений
     {
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
-        int zd=2;//1-для задачи 2.1, 2.2(1 сетка),  2-для задачи 2.2 (2 сетка), 3-для задачи 2.2(3 сетка), 4-для задачи 2.1(пункт с граничным условием 2ого рода
+        int zd=3;//1-для задачи 2.1, 2.2(1 сетка),  2-для задачи 2.2 (2 сетка), 3-для задачи 2.2(3 сетка), 4-для задачи 2.1(пункт с граничным условием 2ого рода
         int punkt=1;//1-граничные условия 1ого рода, 2-граничное условие 1-ого и 2-ого рода
         ///////////////////////////////////////Loookk___sudaaaaa_and_read/////////////////////////////////////////////////////////////////////////
         std::ifstream mesh_(mesh);
@@ -568,7 +576,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                 c1.emplace(iter_c, 1);
                 for(int k1=1; k1<10;k1++)
                 {
-                std::vector<long double> c1_new = compute_c(c1, velocyte(compute_usl_1_roda(1, 0, Mh, k), Mh, k, L), Mh, tau, D);
+                std::vector<long double> c1_new = compute_c(c1, velocyte(compute_usl_1_roda(1, 0, Mh, k), Mh, k, L), Mh, D);
                 c1 = c1_new;
                     if (k1 % 2 == 0)
                     {
@@ -598,7 +606,7 @@ void Zadanie_2(const double p_0, const double p_1, std::string mesh) {
                     auto iter_c = c1.cbegin();
                     c1.emplace(iter_c, 1);
                     for (int k = 1; k < N_ + 1; k++) {
-                        std::vector<long double> c1_new = compute_c(c1, v, Mh, tau, D);
+                        std::vector<long double> c1_new = compute_c(c1, v, Mh,D);
                         c1 = c1_new;
                     }
                     double err = 0.0;

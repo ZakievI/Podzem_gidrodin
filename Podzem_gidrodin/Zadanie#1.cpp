@@ -367,7 +367,7 @@ void Zadanie_1(const double p_0, const double p_1, std::string mesh) {
     double t_e=0.0;
     t_e = compute_taim_exact(p_0, p_1, L, zd);
     t_n = compute_taim(v, Mh)*m*abs(p_0-p_1)/mu/L;
-    out_file(Mh, p,v,2);
+    out_file(Mh, p,v,zd);
 
     
     double tau = 0.001;
